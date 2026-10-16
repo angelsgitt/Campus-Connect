@@ -400,6 +400,20 @@ export default function HomeScreen() {
                     key={post.id}
                     post={post}
                     onPress={() => router.push(`/post/${targetItemId}` as any)}
+                    onAuthorPress={() =>
+                      router.push(`/student/${encodeURIComponent(post.authorName)}` as any)
+                    }
+                    onChatPress={() =>
+                      router.push({
+                        pathname: '/chat/[id]',
+                        params: {
+                          id: post.authorName,
+                          name: post.authorName,
+                          topic: post.title,
+                          department: post.department,
+                        },
+                      } as any)
+                    }
                   />
                 );
               }
@@ -408,6 +422,9 @@ export default function HomeScreen() {
                   key={post.id}
                   post={post}
                   onPress={() => router.push(`/opportunity/${post.id}` as any)}
+                  onAuthorPress={() =>
+                    router.push(`/student/${encodeURIComponent(post.authorName)}` as any)
+                  }
                 />
               );
             })}
@@ -445,9 +462,13 @@ export default function HomeScreen() {
 function MarketplaceCard({
   post,
   onPress,
+  onAuthorPress,
+  onChatPress,
 }: {
   post: MarketplacePost;
   onPress: () => void;
+  onAuthorPress?: () => void;
+  onChatPress?: () => void;
 }) {
   return (
     <Pressable
@@ -510,9 +531,19 @@ function MarketplaceCard({
           </View>
         </View>
 
-        {/* Author / Student Row */}
+        {/* Author / Student Row (Clickable to Student Profile) */}
         <View style={styles.authorRow}>
-          <View style={styles.authorProfileLeft}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`View profile of ${post.authorName}`}
+            onPress={(e) => {
+              e.stopPropagation();
+              onAuthorPress?.();
+            }}
+            style={({ pressed }) => [
+              styles.authorProfileLeft,
+              pressed && styles.pressedOpacity,
+            ]}>
             <View style={styles.authorAvatarCircle}>
               <Text style={styles.authorAvatarInitials}>
                 {post.authorInitials}
@@ -522,12 +553,22 @@ function MarketplaceCard({
               <Text style={styles.authorNameText}>{post.authorName}</Text>
               <Text style={styles.timestampText}>{post.timestamp}</Text>
             </View>
-          </View>
+          </Pressable>
 
           {/* Quick contact / buy badge */}
-          <View style={styles.buyActionBadge}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Chat with seller"
+            onPress={(e) => {
+              e.stopPropagation();
+              onChatPress?.();
+            }}
+            style={({ pressed }) => [
+              styles.buyActionBadge,
+              pressed && styles.pressedOpacity,
+            ]}>
             <Text style={styles.buyActionText}>Chat & Buy</Text>
-          </View>
+          </Pressable>
         </View>
       </View>
     </Pressable>
@@ -540,9 +581,11 @@ function MarketplaceCard({
 function ResourceCard({
   post,
   onPress,
+  onAuthorPress,
 }: {
   post: ResourcePost;
   onPress: () => void;
+  onAuthorPress?: () => void;
 }) {
   return (
     <Pressable
@@ -593,9 +636,19 @@ function ResourceCard({
         <Text style={styles.resourcePostTitle}>{post.title}</Text>
         <Text style={styles.resourceSupportingText}>{post.supportingText}</Text>
 
-        {/* Student metadata row */}
+        {/* Student metadata row (Clickable to Student Profile) */}
         <View style={styles.authorRow}>
-          <View style={styles.authorProfileLeft}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`View profile of ${post.authorName}`}
+            onPress={(e) => {
+              e.stopPropagation();
+              onAuthorPress?.();
+            }}
+            style={({ pressed }) => [
+              styles.authorProfileLeft,
+              pressed && styles.pressedOpacity,
+            ]}>
             <View style={[styles.authorAvatarCircle, styles.authorAvatarViolet]}>
               <Text style={styles.authorAvatarInitials}>
                 {post.authorInitials}
@@ -607,7 +660,7 @@ function ResourceCard({
                 {post.timestamp ?? 'Student Curator'}
               </Text>
             </View>
-          </View>
+          </Pressable>
 
           {/* Action button */}
           <View style={styles.exploreResourceBadge}>

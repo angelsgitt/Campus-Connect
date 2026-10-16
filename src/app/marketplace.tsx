@@ -294,6 +294,9 @@ export default function MarketplaceScreen() {
                 key={item.id}
                 item={item}
                 onPress={() => router.push(`/post/${item.id}` as any)}
+                onSellerPress={() =>
+                  router.push(`/student/${encodeURIComponent(item.sellerName)}` as any)
+                }
               />
             ))}
           </View>
@@ -315,6 +318,78 @@ export default function MarketplaceScreen() {
         )}
       </ScrollView>
 
+      {/* SENT OFFERS DESTINATION MODAL */}
+      <Modal
+        visible={showSentOffersModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowSentOffersModal(false)}>
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setShowSentOffersModal(false)}
+          />
+          <View
+            style={[
+              styles.sentOffersModalSheet,
+              { paddingBottom: Math.max(insets.bottom, 16) + 16 },
+            ]}>
+            <View style={styles.sentOffersHeaderRow}>
+              <View>
+                <Text style={styles.sentOffersTitle}>My Sent Offers</Text>
+                <Text style={styles.sentOffersSubtitle}>
+                  Review your active offers to campus sellers
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setShowSentOffersModal(false)}
+                style={styles.closeRoundButton}>
+                <Text style={styles.closeRoundButtonText}>✕</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView
+              style={styles.sentOffersScrollView}
+              showsVerticalScrollIndicator={false}>
+              {sentOffers.length > 0 ? (
+                sentOffers.map((offer) => (
+                  <View key={offer.id} style={styles.sentOfferItemCard}>
+                    <View style={styles.sentOfferTopLine}>
+                      <Text style={styles.sentOfferItemTitle} numberOfLines={1}>
+                        {offer.listingTitle}
+                      </Text>
+                      <View style={styles.sentOfferStatusBadge}>
+                        <Text style={styles.sentOfferStatusText}>{offer.status}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.sentOfferMetaRow}>
+                      <Text style={styles.sentOfferAmountText}>{offer.amount}</Text>
+                      <Text style={styles.sentOfferSellerText}>
+                        Seller: {offer.sellerName}
+                      </Text>
+                      <Text style={styles.sentOfferTimeText}>{offer.timestamp}</Text>
+                    </View>
+                    {offer.message ? (
+                      <Text style={styles.sentOfferNoteText}>
+                        &quot;{offer.message}&quot;
+                      </Text>
+                    ) : null}
+                  </View>
+                ))
+              ) : (
+                <View style={styles.sentOffersEmptyState}>
+                  <Text style={styles.sentOffersEmptyEmoji}>🏷️</Text>
+                  <Text style={styles.sentOffersEmptyTitle}>No offers sent yet</Text>
+                  <Text style={styles.sentOffersEmptySub}>
+                    Propose fair price offers on any &quot;For sale&quot; item.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* BOTTOM NAVIGATION BAR */}
       <CyberwaveBottomNav activeTab="explore" onToast={showToast} />
     </View>
@@ -327,9 +402,11 @@ export default function MarketplaceScreen() {
 function MarketplaceProductCard({
   item,
   onPress,
+  onSellerPress,
 }: {
   item: MarketplaceItem;
   onPress: () => void;
+  onSellerPress?: () => void;
 }) {
   return (
     <Pressable
@@ -390,8 +467,20 @@ function MarketplaceProductCard({
           {item.title}
         </Text>
 
-        {/* Seller Info */}
-        <View style={styles.cardSellerRow}>
+        {/* Seller Info (Clickable to Student Profile) */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Seller profile: ${item.sellerName}`}
+          onPress={(e) => {
+            e.stopPropagation();
+            if (onSellerPress) {
+              onSellerPress();
+            }
+          }}
+          style={({ pressed }) => [
+            styles.cardSellerRow,
+            pressed && styles.pressedOpacity,
+          ]}>
           <View style={styles.cardSellerAvatar}>
             <Text style={styles.cardSellerAvatarText}>
               {item.sellerInitials}
@@ -400,7 +489,7 @@ function MarketplaceProductCard({
           <Text style={styles.cardSellerName} numberOfLines={1}>
             {item.sellerName}
           </Text>
-        </View>
+        </Pressable>
       </View>
     </Pressable>
   );
@@ -1401,6 +1490,169 @@ const styles = StyleSheet.create({
   navFallbackInactive: {
     fontSize: 16,
     opacity: 0.7,
+  },
+
+  // HEADER RIGHT ACTIONS
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerOffersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  headerOffersButtonEmoji: {
+    fontSize: 14,
+  },
+  headerOffersBadge: {
+    backgroundColor: Cyberwave.amberAccent,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    marginLeft: 4,
+  },
+  headerOffersBadgeText: {
+    color: '#0F172A',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+
+  // SENT OFFERS MODAL SHEET
+  sentOffersModalSheet: {
+    backgroundColor: Cyberwave.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 12,
+  },
+  sentOffersHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  sentOffersTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Cyberwave.midnightInk,
+  },
+  sentOffersSubtitle: {
+    fontSize: 12,
+    color: Cyberwave.mutedSlate,
+    marginTop: 2,
+  },
+  closeRoundButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeRoundButtonText: {
+    fontSize: 14,
+    color: Cyberwave.mutedSlate,
+    fontWeight: '700',
+  },
+  sentOffersScrollView: {
+    maxHeight: 380,
+  },
+  sentOfferItemCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Cyberwave.lightBorder,
+    marginBottom: 10,
+  },
+  sentOfferTopLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  sentOfferItemTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: Cyberwave.midnightInk,
+    marginRight: 8,
+  },
+  sentOfferStatusBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  sentOfferStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  sentOfferMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  sentOfferAmountText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Cyberwave.electricBlue,
+  },
+  sentOfferSellerText: {
+    fontSize: 12,
+    color: Cyberwave.mutedSlate,
+  },
+  sentOfferTimeText: {
+    fontSize: 11,
+    color: Cyberwave.mutedSlate,
+    marginLeft: 'auto',
+  },
+  sentOfferNoteText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: Cyberwave.midnightInk,
+    marginTop: 6,
+    backgroundColor: Cyberwave.white,
+    padding: 6,
+    borderRadius: 8,
+  },
+  sentOffersEmptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  sentOffersEmptyEmoji: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  sentOffersEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Cyberwave.midnightInk,
+    marginBottom: 4,
+  },
+  sentOffersEmptySub: {
+    fontSize: 12,
+    color: Cyberwave.mutedSlate,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
 
   // HELPERS

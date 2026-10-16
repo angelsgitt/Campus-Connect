@@ -693,6 +693,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
   },
+  typeBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
   badgeHackathon: {
     backgroundColor: '#FEF3C7',
   },

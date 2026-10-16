@@ -180,6 +180,7 @@ export default function PostDetailsScreen() {
     submitOffer({
       listingId: item.id,
       listingTitle: item.title,
+      listingPrice: item.price,
       sellerName: item.sellerName,
       amount: `₹${num}`,
       message: offerMessage.trim() || undefined,

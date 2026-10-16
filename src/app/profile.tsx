@@ -27,6 +27,7 @@ import {
 } from '@/constants/cyberwave';
 import { CyberwaveBottomNav } from '@/components/cyberwave-bottom-nav';
 import { useAuth } from '@/lib/auth-context';
+import { useCampusStore } from '@/lib/campus-store';
 
 export type ActivityFilterType =
   | 'All'
@@ -50,6 +51,9 @@ export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { session, signOut } = useAuth();
+  const { getSavedResources, toggleBookmark, myConnections, sentOffers } =
+    useCampusStore();
+  const savedResources = getSavedResources();
 
   // User profile state initialized from shared mock profile
   const [profile, setProfile] = useState<UserProfile>(CURRENT_USER_PROFILE);
@@ -473,7 +477,7 @@ export default function ProfileScreen() {
               <View style={styles.quickLinkTextWrap}>
                 <Text style={styles.quickLinkTitle}>My Circle</Text>
                 <Text style={styles.quickLinkSub}>
-                  {INITIAL_MY_CONNECTIONS.length} campus peers
+                  {myConnections.length} campus peers
                 </Text>
               </View>
               <Text style={styles.quickLinkChevron}>›</Text>
@@ -493,12 +497,14 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.quickLinkTextWrap}>
                 <Text style={styles.quickLinkTitle}>Saved Resources</Text>
-                <Text style={styles.quickLinkSub}>Study bookmarks</Text>
+                <Text style={styles.quickLinkSub}>
+                  {savedResources.length} saved bookmarks
+                </Text>
               </View>
               <Text style={styles.quickLinkChevron}>›</Text>
             </Pressable>
 
-            {/* Marketplace */}
+            {/* Marketplace & Offers */}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Browse Marketplace"
@@ -512,7 +518,9 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.quickLinkTextWrap}>
                 <Text style={styles.quickLinkTitle}>Marketplace</Text>
-                <Text style={styles.quickLinkSub}>Buy, borrow & lend</Text>
+                <Text style={styles.quickLinkSub}>
+                  {sentOffers.length > 0 ? `${sentOffers.length} sent offers` : 'Buy, borrow & lend'}
+                </Text>
               </View>
               <Text style={styles.quickLinkChevron}>›</Text>
             </Pressable>
@@ -782,45 +790,100 @@ export default function ProfileScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* SAVED RESOURCES MODAL (DEMO PLACEHOLDER) */}
+      {/* SAVED RESOURCES MODAL */}
       <Modal
         visible={isSavedResourcesModalOpen}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setIsSavedResourcesModalOpen(false)}>
-        <View style={styles.modalBackdropCenter}>
-          <View style={styles.demoModalCard}>
-            <View style={styles.demoModalIconCircle}>
-              <Text style={styles.demoModalEmoji}>🔖</Text>
+        <View style={styles.modalBackdrop}>
+          <View
+            style={[
+              styles.modalSheetCard,
+              { paddingBottom: Math.max(insets.bottom, 16) + 16 },
+            ]}>
+            <View style={styles.modalHeaderRow}>
+              <View>
+                <Text style={styles.modalSheetTitle}>Saved Resources</Text>
+                <Text style={styles.modalSheetSubtitle}>
+                  {savedResources.length} bookmarked study materials
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close saved resources"
+                onPress={() => setIsSavedResourcesModalOpen(false)}
+                style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseButtonText}>✕</Text>
+              </Pressable>
             </View>
 
-            <Text style={styles.demoModalTitle}>Saved Resources</Text>
-            <Text style={styles.demoModalDescription}>
-              In this local demo, bookmarking is simulated during your active
-              session. To explore verified notes, PYQs, and lecture files, browse
-              the full Resources hub!
-            </Text>
+            <ScrollView
+              style={styles.savedResourcesScroll}
+              showsVerticalScrollIndicator={false}>
+              {savedResources.length > 0 ? (
+                savedResources.map((res) => (
+                  <View key={res.id} style={styles.savedResourceItemCard}>
+                    <Pressable
+                      style={styles.savedResourceClickArea}
+                      onPress={() => {
+                        setIsSavedResourcesModalOpen(false);
+                        router.push(`/resource/${res.id}` as any);
+                      }}>
+                      <View style={styles.savedResourceTagRow}>
+                        <View style={styles.savedResourceSubjectBadge}>
+                          <Text style={styles.savedResourceSubjectText}>
+                            {res.subject}
+                          </Text>
+                        </View>
+                        <Text style={styles.savedResourceTypeTag}>
+                          {res.type}
+                        </Text>
+                      </View>
+                      <Text style={styles.savedResourceTitle} numberOfLines={2}>
+                        {res.title}
+                      </Text>
+                      <Text style={styles.savedResourceContributor}>
+                        Shared by {res.contributorName}
+                      </Text>
+                    </Pressable>
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Browse All Resources"
-              onPress={() => {
-                setIsSavedResourcesModalOpen(false);
-                router.push('/resources' as any);
-              }}
-              style={styles.demoModalPrimaryButton}>
-              <Text style={styles.demoModalPrimaryButtonText}>
-                Open Resources Hub ↗
-              </Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close modal"
-              onPress={() => setIsSavedResourcesModalOpen(false)}
-              style={styles.demoModalSecondaryButton}>
-              <Text style={styles.demoModalSecondaryButtonText}>Close</Text>
-            </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove from bookmarks"
+                      onPress={() => {
+                        toggleBookmark(res.id);
+                        showToast(`Removed "${res.title}" from saved resources.`);
+                      }}
+                      style={styles.savedResourceRemoveBtn}>
+                      <Text style={styles.savedResourceRemoveEmoji}>🗑️</Text>
+                    </Pressable>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.savedResourcesEmptyCard}>
+                  <Text style={styles.savedResourcesEmptyEmoji}>🔖</Text>
+                  <Text style={styles.savedResourcesEmptyTitle}>
+                    No saved resources yet
+                  </Text>
+                  <Text style={styles.savedResourcesEmptySub}>
+                    Tap Bookmark on any study note, solved paper, or guide to keep it right here.
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Browse All Resources"
+                    onPress={() => {
+                      setIsSavedResourcesModalOpen(false);
+                      router.push('/resources' as any);
+                    }}
+                    style={styles.demoModalPrimaryButton}>
+                    <Text style={styles.demoModalPrimaryButtonText}>
+                      Browse Resources Hub ↗
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1489,14 +1552,95 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  demoModalSecondaryButton: {
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
   demoModalSecondaryButtonText: {
     color: Cyberwave.mutedSlate,
     fontSize: 12,
     fontWeight: '600',
+  },
+
+  // Saved Resources Sheet Styles
+  savedResourcesScroll: {
+    maxHeight: 380,
+  },
+  savedResourceItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Cyberwave.lightBorder,
+    marginBottom: 10,
+    gap: 8,
+  },
+  savedResourceClickArea: {
+    flex: 1,
+  },
+  savedResourceTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  savedResourceSubjectBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  savedResourceSubjectText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Cyberwave.electricBlue,
+    textTransform: 'uppercase',
+  },
+  savedResourceTypeTag: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Cyberwave.mutedSlate,
+  },
+  savedResourceTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Cyberwave.midnightInk,
+    marginBottom: 4,
+  },
+  savedResourceContributor: {
+    fontSize: 11,
+    color: Cyberwave.mutedSlate,
+  },
+  savedResourceRemoveBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  savedResourceRemoveEmoji: {
+    fontSize: 14,
+  },
+  savedResourcesEmptyCard: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+  },
+  savedResourcesEmptyEmoji: {
+    fontSize: 40,
+    marginBottom: 8,
+  },
+  savedResourcesEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Cyberwave.midnightInk,
+    marginBottom: 4,
+  },
+  savedResourcesEmptySub: {
+    fontSize: 12,
+    color: Cyberwave.mutedSlate,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 18,
   },
 
   // Interactions

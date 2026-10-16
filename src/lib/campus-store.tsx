@@ -19,11 +19,13 @@ export interface MarketplaceOffer {
   id: string;
   listingId: string;
   listingTitle: string;
-  listingPrice: string;
+  listingPrice?: string;
   sellerName: string;
   offerAmount: string;
+  amount: string;
   message?: string;
   createdAt: string;
+  timestamp: string;
   status: 'Pending' | 'Accepted' | 'Declined';
 }
 
@@ -55,9 +57,15 @@ interface CampusStoreType {
 
   // Offers
   sentOffers: MarketplaceOffer[];
-  submitOffer: (
-    offer: Omit<MarketplaceOffer, 'id' | 'createdAt' | 'status'>
-  ) => MarketplaceOffer;
+  submitOffer: (offer: {
+    listingId: string;
+    listingTitle: string;
+    listingPrice?: string;
+    sellerName: string;
+    offerAmount?: string;
+    amount?: string;
+    message?: string;
+  }) => MarketplaceOffer;
 
   // Chat
   messagesByChatId: Record<string, ChatMessage[]>;
@@ -289,8 +297,10 @@ const INITIAL_OFFERS: MarketplaceOffer[] = [
     listingPrice: '₹250',
     sellerName: 'Rahul Sharma',
     offerAmount: '₹220',
+    amount: '₹220',
     message: 'Can pick it up right after 3 PM class at Central Library!',
     createdAt: '1h ago',
+    timestamp: '1h ago',
     status: 'Pending',
   },
 ];
@@ -439,11 +449,28 @@ export function CampusStoreProvider({ children }: { children: ReactNode }) {
 
   // 3. Offers Handlers
   const submitOffer = useCallback(
-    (offer: Omit<MarketplaceOffer, 'id' | 'createdAt' | 'status'>) => {
+    (offer: {
+      listingId: string;
+      listingTitle: string;
+      listingPrice?: string;
+      sellerName: string;
+      offerAmount?: string;
+      amount?: string;
+      message?: string;
+    }) => {
+      const finalAmount = offer.amount || offer.offerAmount || '₹0';
+      const now = 'Just now';
       const newOffer: MarketplaceOffer = {
-        ...offer,
         id: `offer-${Date.now()}`,
-        createdAt: 'Just now',
+        listingId: offer.listingId,
+        listingTitle: offer.listingTitle,
+        listingPrice: offer.listingPrice,
+        sellerName: offer.sellerName,
+        offerAmount: finalAmount,
+        amount: finalAmount,
+        message: offer.message,
+        createdAt: now,
+        timestamp: now,
         status: 'Pending',
       };
       setSentOffers((prev) => [newOffer, ...prev]);

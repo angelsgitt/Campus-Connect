@@ -21,11 +21,13 @@ import {
   SAMPLE_RESOURCES,
 } from '@/constants/cyberwave';
 import { CyberwaveBottomNav } from '@/components/cyberwave-bottom-nav';
+import { useCampusStore } from '@/lib/campus-store';
 
 export default function ResourceDetailsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
+  const { isBookmarked: checkBookmarked, toggleBookmark } = useCampusStore();
 
   // Look up resource from shared in-memory dataset
   const resource: ResourceItem | undefined = SAMPLE_RESOURCES.find(
@@ -33,7 +35,7 @@ export default function ResourceDetailsScreen() {
   );
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const bookmarked = resource ? checkBookmarked(resource.id) : false;
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -81,16 +83,14 @@ export default function ResourceDetailsScreen() {
     }
   };
 
-  const toggleBookmark = () => {
-    setIsBookmarked((prev) => {
-      const next = !prev;
-      showToast(
-        next
-          ? 'Saved to your study bookmarks! 🔖'
-          : 'Removed from bookmarks.'
-      );
-      return next;
-    });
+  const handleToggleBookmark = () => {
+    if (!resource) return;
+    const next = toggleBookmark(resource.id);
+    showToast(
+      next
+        ? 'Saved to your study bookmarks! 🔖'
+        : 'Removed from bookmarks.'
+    );
   };
 
   const bottomBarHeight = 64 + Math.max(insets.bottom, 12);
@@ -187,14 +187,22 @@ export default function ResourceDetailsScreen() {
           <View style={styles.headerActionsRight}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark resource'}
-              onPress={toggleBookmark}
+              accessibilityLabel={bookmarked ? 'Remove bookmark' : 'Bookmark resource'}
+              onPress={handleToggleBookmark}
               style={({ pressed }) => [
-                styles.headerCircleBtn,
+                styles.headerBookmarkPill,
+                bookmarked && styles.headerBookmarkPillActive,
                 pressed && styles.pressedOpacity,
               ]}>
-              <Text style={styles.headerActionEmoji}>
-                {isBookmarked ? '🔖' : '📑'}
+              <Text style={styles.headerBookmarkPillEmoji}>
+                {bookmarked ? '🔖' : '📑'}
+              </Text>
+              <Text
+                style={[
+                  styles.headerBookmarkPillText,
+                  bookmarked && styles.headerBookmarkPillTextActive,
+                ]}>
+                {bookmarked ? 'Bookmarked' : 'Bookmark'}
               </Text>
             </Pressable>
 
@@ -257,9 +265,23 @@ export default function ResourceDetailsScreen() {
           { paddingBottom: scrollPaddingBottom },
         ]}
         showsVerticalScrollIndicator={false}>
-        {/* CONTRIBUTOR INFO CARD */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.cardHeaderLabel}>SHARED BY</Text>
+        {/* CONTRIBUTOR INFO CARD - CLICKABLE TO STUDENT PROFILE */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Student profile: ${resource.contributorName}`}
+          onPress={() =>
+            router.push(
+              `/student/${encodeURIComponent(resource.contributorName)}` as any
+            )
+          }
+          style={({ pressed }) => [
+            styles.sectionCard,
+            pressed && styles.pressedCardOpacity,
+          ]}>
+          <View style={styles.contributorHeaderRow}>
+            <Text style={styles.cardHeaderLabel}>SHARED BY</Text>
+            <Text style={styles.viewProfileHintText}>View Profile ›</Text>
+          </View>
           <View style={styles.contributorRow}>
             <View
               style={[
@@ -287,7 +309,7 @@ export default function ResourceDetailsScreen() {
               </Text>
             </View>
           </View>
-        </View>
+        </Pressable>
 
         {/* DESCRIPTION & STUDY NOTES */}
         <View style={styles.sectionCard}>
@@ -583,7 +605,31 @@ const styles = StyleSheet.create({
   },
   headerActionsRight: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+  },
+  headerBookmarkPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 18,
+  },
+  headerBookmarkPillActive: {
+    backgroundColor: Cyberwave.white,
+  },
+  headerBookmarkPillEmoji: {
+    fontSize: 13,
+  },
+  headerBookmarkPillText: {
+    color: Cyberwave.white,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  headerBookmarkPillTextActive: {
+    color: Cyberwave.electricBlue,
   },
   headerCircleBtn: {
     width: 36,
@@ -660,6 +706,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Cyberwave.mutedSlate,
     letterSpacing: 0.8,
+    marginBottom: 12,
+  },
+  contributorHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  viewProfileHintText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Cyberwave.electricBlue,
     marginBottom: 12,
   },
 
@@ -942,6 +1000,10 @@ const styles = StyleSheet.create({
   // Interactions
   pressedOpacity: {
     opacity: 0.75,
+  },
+  pressedCardOpacity: {
+    opacity: 0.94,
+    transform: [{ scale: 0.99 }],
   },
   pressedButtonOpacity: {
     opacity: 0.88,

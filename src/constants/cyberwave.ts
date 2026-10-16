@@ -7,6 +7,7 @@ export const Cyberwave = {
   white: '#FFFFFF',
   mutedSlate: '#64748B',
   lightBorder: '#E2E8F0',
+  amberAccent: '#F59E0B',
 } as const;
 
 export interface CategoryItem {
@@ -381,6 +382,8 @@ export interface StudentProfile {
   mutualConnections?: number;
   sharedNote?: string;
   avatarColor?: string;
+  campus?: string;
+  bio?: string;
 }
 
 export const INITIAL_DISCOVER_STUDENTS: StudentProfile[] = [

@@ -18,10 +18,9 @@ import {
   Cyberwave,
   StudentProfile,
   INITIAL_DISCOVER_STUDENTS,
-  INITIAL_MY_CONNECTIONS,
-  INITIAL_PENDING_REQUESTS,
 } from '@/constants/cyberwave';
 import { CyberwaveBottomNav } from '@/components/cyberwave-bottom-nav';
+import { useCampusStore } from '@/lib/campus-store';
 
 type CircleTabId = 'discover' | 'my-circle' | 'requests';
 
@@ -35,11 +34,16 @@ export default function MyCircleScreen() {
   // Search query
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Local React State for connections, requests, and sent invites
+  // Shared Campus Store State for connections, requests, and sent invites
+  const {
+    myConnections,
+    pendingRequests,
+    sentRequestIds,
+    connectWithStudent,
+    acceptConnectionRequest,
+    declineConnectionRequest,
+  } = useCampusStore();
   const [discoverStudents] = useState<StudentProfile[]>(INITIAL_DISCOVER_STUDENTS);
-  const [myConnections, setMyConnections] = useState<StudentProfile[]>(INITIAL_MY_CONNECTIONS);
-  const [pendingRequests, setPendingRequests] = useState<StudentProfile[]>(INITIAL_PENDING_REQUESTS);
-  const [sentRequestIds, setSentRequestIds] = useState<Set<string>>(new Set());
 
   // In-app Toast State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -61,29 +65,34 @@ export default function MyCircleScreen() {
 
   // Connect action in Discover tab
   const handleConnect = (student: StudentProfile) => {
-    if (sentRequestIds.has(student.id)) return;
-    setSentRequestIds((prev) => new Set(prev).add(student.id));
+    if (sentRequestIds.includes(student.id)) return;
+    connectWithStudent(student);
     showToast(`Connection request sent to ${student.name}!`);
   };
 
   // Accept incoming request
   const handleAcceptRequest = (student: StudentProfile) => {
-    setPendingRequests((prev) => prev.filter((item) => item.id !== student.id));
-    setMyConnections((prev) => [student, ...prev]);
+    acceptConnectionRequest(student.id);
     showToast(`Connected with ${student.name}! Added to My Circle.`);
   };
 
   // Decline incoming request
   const handleDeclineRequest = (student: StudentProfile) => {
-    setPendingRequests((prev) => prev.filter((item) => item.id !== student.id));
+    declineConnectionRequest(student.id);
     showToast(`Request from ${student.name} removed.`);
   };
 
-  // Prototype Message handler
+  // Chat conversation navigation
   const handleMessage = (student: StudentProfile) => {
-    showToast(
-      `Chat with ${student.name} is a prototype preview — messaging will be connected later.`
-    );
+    router.push({
+      pathname: '/chat/[id]',
+      params: {
+        id: student.id,
+        name: student.name,
+        topic: `Direct Chat with ${student.name}`,
+        department: student.department,
+      },
+    } as any);
   };
 
   // Navigate to Create a Post with Request preselected
@@ -328,43 +337,54 @@ export default function MyCircleScreen() {
 
               {/* Student Cards List */}
               {filteredDiscover.map((student) => {
-                const isSent = sentRequestIds.has(student.id);
+                const isSent = sentRequestIds.includes(student.id);
                 return (
                   <View key={student.id} style={styles.studentCard}>
                     {/* Top Row: Avatar, Name, Department & Connect Button */}
                     <View style={styles.cardHeaderRow}>
-                      <View
-                        style={[
-                          styles.avatarCircle,
-                          {
-                            backgroundColor: student.avatarColor
-                              ? `${student.avatarColor}20`
-                              : '#EFF6FF',
-                          },
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`View profile of ${student.name}`}
+                        onPress={() =>
+                          router.push(`/student/${encodeURIComponent(student.id)}` as any)
+                        }
+                        style={({ pressed }) => [
+                          styles.cardHeaderProfilePressable,
+                          pressed && styles.pressedOpacity,
                         ]}>
-                        <Text
+                        <View
                           style={[
-                            styles.avatarInitials,
+                            styles.avatarCircle,
                             {
-                              color:
-                                student.avatarColor ?? Cyberwave.electricBlue,
+                              backgroundColor: student.avatarColor
+                                ? `${student.avatarColor}20`
+                                : '#EFF6FF',
                             },
                           ]}>
-                          {student.initials}
-                        </Text>
-                      </View>
-
-                      <View style={styles.cardHeaderInfo}>
-                        <Text style={styles.studentName}>{student.name}</Text>
-                        <Text style={styles.studentDept}>
-                          {student.department} · {student.year}
-                        </Text>
-                        {student.mutualConnections !== undefined && (
-                          <Text style={styles.mutualConnectionsText}>
-                            👥 {student.mutualConnections} mutual connections
+                          <Text
+                            style={[
+                              styles.avatarInitials,
+                              {
+                                color:
+                                  student.avatarColor ?? Cyberwave.electricBlue,
+                              },
+                            ]}>
+                            {student.initials}
                           </Text>
-                        )}
-                      </View>
+                        </View>
+
+                        <View style={styles.cardHeaderInfo}>
+                          <Text style={styles.studentName}>{student.name}</Text>
+                          <Text style={styles.studentDept}>
+                            {student.department} · {student.year}
+                          </Text>
+                          {student.mutualConnections !== undefined && (
+                            <Text style={styles.mutualConnectionsText}>
+                              👥 {student.mutualConnections} mutual connections
+                            </Text>
+                          )}
+                        </View>
+                      </Pressable>
 
                       {/* Connect Button */}
                       <Pressable
@@ -485,42 +505,53 @@ export default function MyCircleScreen() {
               {filteredConnections.map((student) => (
                 <View key={student.id} style={styles.studentCard}>
                   <View style={styles.cardHeaderRow}>
-                    <View
-                      style={[
-                        styles.avatarCircle,
-                        {
-                          backgroundColor: student.avatarColor
-                            ? `${student.avatarColor}20`
-                            : '#EFF6FF',
-                        },
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`View profile of ${student.name}`}
+                      onPress={() =>
+                        router.push(`/student/${encodeURIComponent(student.id)}` as any)
+                      }
+                      style={({ pressed }) => [
+                        styles.cardHeaderProfilePressable,
+                        pressed && styles.pressedOpacity,
                       ]}>
-                      <Text
+                      <View
                         style={[
-                          styles.avatarInitials,
+                          styles.avatarCircle,
                           {
-                            color:
-                              student.avatarColor ?? Cyberwave.electricBlue,
+                            backgroundColor: student.avatarColor
+                              ? `${student.avatarColor}20`
+                              : '#EFF6FF',
                           },
                         ]}>
-                        {student.initials}
-                      </Text>
-                    </View>
-
-                    <View style={styles.cardHeaderInfo}>
-                      <View style={styles.connectedNameRow}>
-                        <Text style={styles.studentName}>{student.name}</Text>
-                        <Text style={styles.connectedDot}>●</Text>
-                        <Text style={styles.connectedLabel}>Connected</Text>
-                      </View>
-                      <Text style={styles.studentDept}>
-                        {student.department} · {student.year}
-                      </Text>
-                      {student.mutualConnections !== undefined && (
-                        <Text style={styles.mutualConnectionsText}>
-                          👥 {student.mutualConnections} mutual connections
+                        <Text
+                          style={[
+                            styles.avatarInitials,
+                            {
+                              color:
+                                student.avatarColor ?? Cyberwave.electricBlue,
+                            },
+                          ]}>
+                          {student.initials}
                         </Text>
-                      )}
-                    </View>
+                      </View>
+
+                      <View style={styles.cardHeaderInfo}>
+                        <View style={styles.connectedNameRow}>
+                          <Text style={styles.studentName}>{student.name}</Text>
+                          <Text style={styles.connectedDot}>●</Text>
+                          <Text style={styles.connectedLabel}>Connected</Text>
+                        </View>
+                        <Text style={styles.studentDept}>
+                          {student.department} · {student.year}
+                        </Text>
+                        {student.mutualConnections !== undefined && (
+                          <Text style={styles.mutualConnectionsText}>
+                            👥 {student.mutualConnections} mutual connections
+                          </Text>
+                        )}
+                      </View>
+                    </Pressable>
 
                     {/* Message button (prototype interaction) */}
                     <Pressable
@@ -593,7 +624,16 @@ export default function MyCircleScreen() {
 
               {filteredRequests.map((student) => (
                 <View key={student.id} style={styles.requestCard}>
-                  <View style={styles.requestHeaderRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`View profile of ${student.name}`}
+                    onPress={() =>
+                      router.push(`/student/${encodeURIComponent(student.id)}` as any)
+                    }
+                    style={({ pressed }) => [
+                      styles.requestHeaderRow,
+                      pressed && styles.pressedOpacity,
+                    ]}>
                     <View
                       style={[
                         styles.avatarCircle,
@@ -628,7 +668,7 @@ export default function MyCircleScreen() {
                         </View>
                       )}
                     </View>
-                  </View>
+                  </Pressable>
 
                   {/* Accept / Decline Action Row */}
                   <View style={styles.requestActionsRow}>
@@ -990,6 +1030,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  cardHeaderProfilePressable: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },

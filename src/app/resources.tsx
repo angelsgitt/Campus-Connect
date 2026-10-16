@@ -20,9 +20,11 @@ import {
   SAMPLE_RESOURCES,
 } from '@/constants/cyberwave';
 import { CyberwaveBottomNav } from '@/components/cyberwave-bottom-nav';
+import { useCampusStore } from '@/lib/campus-store';
 
 export type ResourceFilterOption =
   | 'All'
+  | 'Saved'
   | 'Notes'
   | 'PYQs'
   | 'Lab Files'
@@ -31,6 +33,7 @@ export type ResourceFilterOption =
 
 const FILTER_OPTIONS: ResourceFilterOption[] = [
   'All',
+  'Saved',
   'Notes',
   'PYQs',
   'Lab Files',
@@ -41,6 +44,7 @@ const FILTER_OPTIONS: ResourceFilterOption[] = [
 export default function ResourcesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isBookmarked, toggleBookmark } = useCampusStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] =
@@ -76,7 +80,9 @@ export default function ResourcesScreen() {
     return SAMPLE_RESOURCES.filter((item) => {
       // 1. Category chip matching
       let matchesFilter = true;
-      if (selectedFilter === 'Notes') {
+      if (selectedFilter === 'Saved') {
+        matchesFilter = isBookmarked(item.id);
+      } else if (selectedFilter === 'Notes') {
         matchesFilter = item.type === 'Notes';
       } else if (selectedFilter === 'PYQs') {
         matchesFilter = item.type === 'PYQ';
@@ -101,7 +107,7 @@ export default function ResourcesScreen() {
 
       return titleMatch || subjectMatch || typeMatch || contributorMatch || tagsMatch;
     });
-  }, [searchQuery, selectedFilter]);
+  }, [searchQuery, selectedFilter, isBookmarked]);
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -304,7 +310,17 @@ export default function ResourcesScreen() {
               <ResourceCard
                 key={item.id}
                 resource={item}
+                isSaved={isBookmarked(item.id)}
+                onToggleBookmark={() => {
+                  const next = toggleBookmark(item.id);
+                  showToast(next ? 'Saved to bookmarks! 🔖' : 'Removed from bookmarks.');
+                }}
                 onPress={() => router.push(`/resource/${item.id}` as any)}
+                onContributorPress={() =>
+                  router.push(
+                    `/student/${encodeURIComponent(item.contributorName)}` as any
+                  )
+                }
               />
             ))}
           </View>
@@ -346,10 +362,19 @@ export default function ResourcesScreen() {
 // ----------------------------------------------------
 interface ResourceCardProps {
   resource: ResourceItem;
+  isSaved: boolean;
+  onToggleBookmark: () => void;
   onPress: () => void;
+  onContributorPress: () => void;
 }
 
-function ResourceCard({ resource, onPress }: ResourceCardProps) {
+function ResourceCard({
+  resource,
+  isSaved,
+  onToggleBookmark,
+  onPress,
+  onContributorPress,
+}: ResourceCardProps) {
   const badgeConfig = getBadgeConfig(resource.type);
 
   return (
@@ -361,7 +386,7 @@ function ResourceCard({ resource, onPress }: ResourceCardProps) {
         styles.cardContainer,
         pressed && styles.pressedCardOpacity,
       ]}>
-      {/* Top Meta Row: Subject & Type Badge */}
+      {/* Top Meta Row: Subject & Type Badge & Bookmark Toggle */}
       <View style={styles.cardHeaderRow}>
         <View style={styles.cardSubjectPill}>
           <Text style={styles.cardSubjectText} numberOfLines={1}>
@@ -369,14 +394,31 @@ function ResourceCard({ resource, onPress }: ResourceCardProps) {
           </Text>
         </View>
 
-        <View
-          style={[
-            styles.cardTypeBadge,
-            { backgroundColor: badgeConfig.bgColor, borderColor: badgeConfig.borderColor },
-          ]}>
-          <Text style={[styles.cardTypeBadgeText, { color: badgeConfig.textColor }]}>
-            {badgeConfig.icon} {resource.type}
-          </Text>
+        <View style={styles.cardHeaderRightRow}>
+          <View
+            style={[
+              styles.cardTypeBadge,
+              { backgroundColor: badgeConfig.bgColor, borderColor: badgeConfig.borderColor },
+            ]}>
+            <Text style={[styles.cardTypeBadgeText, { color: badgeConfig.textColor }]}>
+              {badgeConfig.icon} {resource.type}
+            </Text>
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isSaved ? 'Remove bookmark' : 'Bookmark resource'}
+            onPress={(e) => {
+              e.stopPropagation();
+              onToggleBookmark();
+            }}
+            style={({ pressed }) => [
+              styles.cardBookmarkBtn,
+              isSaved && styles.cardBookmarkBtnActive,
+              pressed && styles.pressedOpacity,
+            ]}>
+            <Text style={styles.cardBookmarkEmoji}>{isSaved ? '🔖' : '📑'}</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -409,9 +451,19 @@ function ResourceCard({ resource, onPress }: ResourceCardProps) {
       {/* Divider */}
       <View style={styles.cardDivider} />
 
-      {/* Footer: Contributor & View Action */}
+      {/* Footer: Contributor (Clickable to Student Profile) & View Action */}
       <View style={styles.cardFooterRow}>
-        <View style={styles.contributorInfo}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`View profile of ${resource.contributorName}`}
+          onPress={(e) => {
+            e.stopPropagation();
+            onContributorPress();
+          }}
+          style={({ pressed }) => [
+            styles.contributorInfo,
+            pressed && styles.pressedOpacity,
+          ]}>
           <View
             style={[
               styles.contributorAvatar,
@@ -427,7 +479,7 @@ function ResourceCard({ resource, onPress }: ResourceCardProps) {
             </Text>
             <Text style={styles.uploadTime}>{resource.uploadTime}</Text>
           </View>
-        </View>
+        </Pressable>
 
         <View style={styles.viewResourceAction}>
           <Text style={styles.viewResourceActionText}>View Resource</Text>
@@ -857,6 +909,28 @@ const styles = StyleSheet.create({
   cardTypeBadgeText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  cardHeaderRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardBookmarkBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Cyberwave.lightBorder,
+  },
+  cardBookmarkBtnActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: Cyberwave.electricBlue,
+  },
+  cardBookmarkEmoji: {
+    fontSize: 13,
   },
   cardTitle: {
     fontSize: 15,
