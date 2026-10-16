@@ -83,6 +83,7 @@ export interface MarketplaceItem {
   location: string;
   badgeText?: string;
   visualType: 'book' | 'calculator' | 'labcoat' | 'lamp' | 'dsa' | 'drafting' | 'hoodie' | 'headphones';
+  imageUri?: string;
 }
 
 export const SAMPLE_MARKETPLACE_ITEMS: MarketplaceItem[] = [

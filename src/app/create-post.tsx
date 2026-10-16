@@ -9,7 +9,9 @@ import {
   Platform,
   KeyboardAvoidingView,
   Modal,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -209,6 +211,10 @@ export default function CreatePostScreen() {
   const [publishedPost, setPublishedPost] = useState<CreatedPostRecord | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // Selected Photo / Image Picker State
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [isPickingImage, setIsPickingImage] = useState(false);
+
   // In-app Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -218,6 +224,117 @@ export default function CreatePostScreen() {
       setToastMessage(null);
     }, 3200);
   };
+
+  // Launch device image library
+  const handlePickImage = async () => {
+    try {
+      setIsPickingImage(true);
+
+      // Check / request media library permissions
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        showToast(
+          'Photo library access is needed to select item photos. Please grant permission.'
+        );
+        return;
+      }
+
+      // Launch system image library
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (result.canceled) {
+        // User cancelled, gracefully do nothing
+        return;
+      }
+
+      if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
+        setSelectedImageUri(result.assets[0].uri);
+        showToast('Item photo attached!');
+      }
+    } catch (err: any) {
+      console.error('Image selection error:', err);
+      showToast('Could not load image from library. Please try again.');
+    } finally {
+      setIsPickingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImageUri(null);
+    showToast('Photo removed.');
+  };
+
+  // Render Image Picker & Preview Card
+  const renderImagePickerField = () => (
+    <View style={styles.fieldGroup}>
+      <Text style={styles.fieldLabel}>Photos (Optional)</Text>
+      {selectedImageUri ? (
+        <View style={styles.imagePreviewContainer}>
+          <Image
+            source={{ uri: selectedImageUri }}
+            style={styles.imagePreviewImage}
+            resizeMode="cover"
+          />
+          <View style={styles.imagePreviewBar}>
+            <View style={styles.imagePreviewTag}>
+              <Text style={styles.imagePreviewTagEmoji}>✅</Text>
+              <Text style={styles.imagePreviewTagText}>Photo Attached</Text>
+            </View>
+            <View style={styles.imagePreviewActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Change photo"
+                onPress={handlePickImage}
+                disabled={isPickingImage}
+                style={({ pressed }) => [
+                  styles.changeImageBtn,
+                  pressed && styles.pressedOpacity,
+                ]}>
+                <Text style={styles.changeImageBtnText}>
+                  {isPickingImage ? 'Opening...' : 'Change'}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Remove photo"
+                onPress={handleRemoveImage}
+                style={({ pressed }) => [
+                  styles.removeImageBtn,
+                  pressed && styles.pressedOpacity,
+                ]}>
+                <Text style={styles.removeImageBtnText}>Remove</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add Item Photos"
+          onPress={handlePickImage}
+          disabled={isPickingImage}
+          style={({ pressed }) => [
+            styles.imageUploadPlaceholderCard,
+            pressed && styles.pressedOpacity,
+          ]}>
+          <Text style={styles.imagePlaceholderIcon}>📷</Text>
+          <Text style={styles.imagePlaceholderTitle}>
+            {isPickingImage ? 'Opening Gallery...' : 'Add Item Photos'}
+          </Text>
+          <Text style={styles.imagePlaceholderSubtitle}>
+            Tap to choose a photo from your gallery (JPG or PNG)
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -327,6 +444,7 @@ export default function CreatePostScreen() {
             : category === 'Clothing'
             ? 'hoodie'
             : 'lamp',
+        imageUri: selectedImageUri || undefined,
       };
       SAMPLE_MARKETPLACE_ITEMS.unshift(marketplaceRecord);
     }
@@ -459,6 +577,7 @@ export default function CreatePostScreen() {
     setResourceUrl('');
     setEventDate('');
     setRegistrationUrl('');
+    setSelectedImageUri(null);
     setErrors({});
     setShowSuccessModal(false);
     setPublishedPost(null);
@@ -798,19 +917,8 @@ export default function CreatePostScreen() {
                   )}
                 </View>
 
-                {/* Optional Image Upload Placeholder */}
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Photos (Optional)</Text>
-                  <View style={styles.imageUploadPlaceholderCard}>
-                    <Text style={styles.imagePlaceholderIcon}>📷</Text>
-                    <Text style={styles.imagePlaceholderTitle}>
-                      Add Item Photos
-                    </Text>
-                    <Text style={styles.imagePlaceholderSubtitle}>
-                      Photo upload placeholder (Native image picker is not installed)
-                    </Text>
-                  </View>
-                </View>
+                {/* Item Photos */}
+                {renderImagePickerField()}
               </>
             )}
 
@@ -972,19 +1080,8 @@ export default function CreatePostScreen() {
                   )}
                 </View>
 
-                {/* Optional Image Upload Placeholder */}
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>Photos (Optional)</Text>
-                  <View style={styles.imageUploadPlaceholderCard}>
-                    <Text style={styles.imagePlaceholderIcon}>📷</Text>
-                    <Text style={styles.imagePlaceholderTitle}>
-                      Add Item Photos
-                    </Text>
-                    <Text style={styles.imagePlaceholderSubtitle}>
-                      Photo upload placeholder (Native image picker is not installed)
-                    </Text>
-                  </View>
-                </View>
+                {/* Item Photos */}
+                {renderImagePickerField()}
               </>
             )}
 
@@ -1859,6 +1956,71 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Cyberwave.mutedSlate,
     textAlign: 'center',
+  },
+  imagePreviewContainer: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Cyberwave.lightBorder,
+    backgroundColor: Cyberwave.white,
+  },
+  imagePreviewImage: {
+    width: '100%',
+    height: 190,
+    backgroundColor: '#0F172A',
+  },
+  imagePreviewBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: Cyberwave.white,
+    borderTopWidth: 1,
+    borderTopColor: Cyberwave.lightBorder,
+  },
+  imagePreviewTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  imagePreviewTagEmoji: {
+    fontSize: 13,
+  },
+  imagePreviewTagText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Cyberwave.midnightInk,
+  },
+  imagePreviewActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  changeImageBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  changeImageBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Cyberwave.electricBlue,
+  },
+  removeImageBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  removeImageBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#DC2626',
   },
 
   // PUBLISH BUTTON

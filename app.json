@@ -32,6 +32,12 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Campus Connect accesses your photos so you can attach item images to your marketplace listings."
+        }
       ]
     ],
     "experiments": {

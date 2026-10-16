@@ -7,6 +7,7 @@ import {
   ScrollView,
   Pressable,
   Modal,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -423,6 +424,7 @@ function MarketplaceProductCard({
           visualType={item.visualType}
           badgeText={item.badgeText}
           title={item.title}
+          imageUri={item.imageUri}
         />
         {/* Listing Type Tag (For sale, Borrow, Lend) */}
         <View
@@ -502,11 +504,26 @@ function VisualHeroPlaceholder({
   visualType,
   badgeText,
   title,
+  imageUri,
 }: {
   visualType: MarketplaceItem['visualType'];
   badgeText?: string;
   title: string;
+  imageUri?: string;
 }) {
+  if (imageUri) {
+    return (
+      <View style={[styles.visualBox, { overflow: 'hidden' }]}>
+        <Image
+          source={{ uri: imageUri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+        {badgeText && <Text style={styles.visualMiniBadge}>{badgeText}</Text>}
+      </View>
+    );
+  }
+
   switch (visualType) {
     case 'book':
       return (

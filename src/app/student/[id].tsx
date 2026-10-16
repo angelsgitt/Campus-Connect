@@ -78,14 +78,14 @@ export default function StudentProfileScreen() {
 
   const handleOpenChat = () => {
     router.push({
-      pathname: `/chat/${encodeURIComponent(student.name)}` as any,
+      pathname: '/chat/[id]',
       params: {
         id: student.name,
         name: student.name,
         avatarColor: student.avatarColor || '#3B82F6',
         department: student.department,
       },
-    });
+    } as any);
   };
 
   // Find student's listings or shared materials in mock datasets

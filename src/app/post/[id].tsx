@@ -8,6 +8,7 @@ import {
   Pressable,
   Share,
   Modal,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -349,6 +350,7 @@ export default function PostDetailsScreen() {
             visualType={item.visualType}
             badgeText={item.badgeText}
             title={item.title}
+            imageUri={item.imageUri}
           />
 
           {/* Listing Type Tag Badge (For Sale / Borrow / Lend) */}
@@ -846,11 +848,30 @@ function DetailVisualHero({
   visualType,
   badgeText,
   title,
+  imageUri,
 }: {
   visualType: MarketplaceItem['visualType'];
   badgeText?: string;
   title: string;
+  imageUri?: string;
 }) {
+  if (imageUri) {
+    return (
+      <View style={[styles.heroBox, { overflow: 'hidden' }]}>
+        <Image
+          source={{ uri: imageUri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+        {badgeText && (
+          <View style={styles.heroMiniBadge}>
+            <Text style={styles.heroMiniBadgeText}>{badgeText}</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
   switch (visualType) {
     case 'book':
       return (
